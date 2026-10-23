@@ -1,8 +1,19 @@
 #include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // ---------- Pins ----------
 const int LED1_PIN = 18;
 const int LED2_PIN = 19;
+const int OLED_SDA = 21;
+const int OLED_SCL = 22;
+
+// ---------- OLED ----------
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_ADDR 0x3C
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // ---------- PWM settings ----------
 // Channels 0 and 1 share one LEDC timer (same frequency), so LED2 uses channel 2
@@ -14,16 +25,19 @@ const int LED2_FREQ = 5000;   // Hz
 const int PWM_RES = 10;       // bits -> duty range 0..1023
 const int MAX_DUTY = (1 << PWM_RES) - 1;
 
-// ---------- Fade state (these values are also used for the OLED in Task 2) ----------
+// ---------- Fade state (same variables are used for PWM output and OLED text) ----------
 int duty1 = 0;
 int duty2 = MAX_DUTY;
 int dir1 = 1;
 int dir2 = -1;
 const int STEP1 = 4;
 const int STEP2 = 6;
-const unsigned long FADE_INTERVAL = 20;   // ms between fade steps
+const unsigned long FADE_INTERVAL = 20;     // ms between fade steps
+const unsigned long OLED_INTERVAL = 100;    // ms between OLED refreshes
 unsigned long lastFade = 0;
+unsigned long lastOled = 0;
 unsigned long lastPrint = 0;
+bool oledOk = false;
 
 int dutyToPercent(int duty) {
   return (duty * 100 + MAX_DUTY / 2) / MAX_DUTY;
@@ -49,7 +63,6 @@ void pwmWrite(int led, int duty) {
 #endif
 }
 
-// Moves duty up or down and reverses direction at 0 and MAX_DUTY
 int nextDuty(int duty, int &dir, int step) {
   duty += dir * step;
   if (duty >= MAX_DUTY) { duty = MAX_DUTY; dir = -1; }
@@ -57,12 +70,38 @@ int nextDuty(int duty, int &dir, int step) {
   return duty;
 }
 
+void drawOled() {
+  char line1[24];
+  char line2[24];
+  snprintf(line1, sizeof(line1), "LED1:%3d%% F:%dHz", dutyToPercent(duty1), LED1_FREQ);
+  snprintf(line2, sizeof(line2), "LED2:%3d%% F:%dHz", dutyToPercent(duty2), LED2_FREQ);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(20, 4);
+  display.print("PWM MONITOR");
+  display.setCursor(0, 28);
+  display.print(line1);
+  display.setCursor(0, 46);
+  display.print(line2);
+  display.display();
+}
+
 void setup() {
   Serial.begin(115200);
+
+  // PWM first, so LEDs work even if the OLED is not found
   pwmBegin();
   pwmWrite(1, duty1);
   pwmWrite(2, duty2);
-  Serial.println("Dual LED PWM fade started");
+
+  Wire.begin(OLED_SDA, OLED_SCL);
+  Wire.setClock(400000);
+  oledOk = display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
+  if (!oledOk) {
+    Serial.println("OLED not found - check wiring and I2C address");
+  }
 }
 
 void loop() {
@@ -74,6 +113,11 @@ void loop() {
     duty2 = nextDuty(duty2, dir2, STEP2);
     pwmWrite(1, duty1);
     pwmWrite(2, duty2);
+  }
+
+  if (oledOk && now - lastOled >= OLED_INTERVAL) {
+    lastOled = now;
+    drawOled();
   }
 
   if (now - lastPrint >= 500) {

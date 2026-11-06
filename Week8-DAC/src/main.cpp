@@ -1,12 +1,12 @@
 #include <Arduino.h>
 
 #define DAC_PIN 25
-#define FADE_DELAY_MS 20
+#define FADE_DELAY_MS 5
 
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("Program 2: gradual DAC fade on GPIO25");
+    Serial.printf("Program 2 delay experiment: FADE_DELAY_MS = %d ms\n", FADE_DELAY_MS);
 }
 
 void loop()

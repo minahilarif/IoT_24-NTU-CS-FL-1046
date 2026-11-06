@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "author": "Minahil Arif",
+  "author": "Minahil Arif - 1046",
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -67.2, "left": -43.16, "attrs": {} },

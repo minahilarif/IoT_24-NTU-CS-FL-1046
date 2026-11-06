@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #define DAC_PIN 25
-#define FADE_DELAY_MS 5
+#define FADE_DELAY_MS 50
 
 void setup()
 {

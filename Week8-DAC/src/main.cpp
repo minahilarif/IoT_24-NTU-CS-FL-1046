@@ -1,27 +1,32 @@
 #include <Arduino.h>
 
-#define DAC_PIN 26   // DAC2 is on GPIO26
-#define FADE_DELAY_MS 20
+#define DAC_PIN 25       // DAC1: steady analog voltage
+#define PWM_PIN 27       // PWM: repeated HIGH/LOW pulses
+#define PWM_CHANNEL 0
+#define PWM_FREQ 5000    // Hz
+#define PWM_RES 8        // bits -> duty 0..255
+#define VALUE 128        // same number used by both outputs
 
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("Task 5: gradual fade using DAC2 on GPIO26");
+
+    // PWM setup on GPIO27
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    ledcAttach(PWM_PIN, PWM_FREQ, PWM_RES);
+    ledcWrite(PWM_PIN, VALUE);
+#else
+    ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RES);
+    ledcAttachPin(PWM_PIN, PWM_CHANNEL);
+    ledcWrite(PWM_CHANNEL, VALUE);
+#endif
+
+    // DAC output on GPIO25
+    dacWrite(DAC_PIN, VALUE);
+
+    Serial.println("Simultaneous DAC (GPIO25) and PWM (GPIO27), both with value 128");
 }
 
 void loop()
 {
-    // fade up: 0 -> 255
-    for (int value = 0; value <= 255; value++)
-    {
-        dacWrite(DAC_PIN, value);
-        delay(FADE_DELAY_MS);
-    }
-
-    // fade down: 255 -> 0
-    for (int value = 255; value >= 0; value--)
-    {
-        dacWrite(DAC_PIN, value);
-        delay(FADE_DELAY_MS);
-    }
 }
